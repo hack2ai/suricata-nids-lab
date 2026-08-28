@@ -1,0 +1,30 @@
+name: Validate Suricata Rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config/local.rules'
+      - '.github/workflows/validate-rules.yml'
+  pull_request:
+    paths:
+      - 'config/local.rules'
+      - '.github/workflows/validate-rules.yml'
+
+jobs:
+  validate-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Suricata
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y suricata
+
+      - name: Validate rule syntax
+        run: |
+          sudo suricata -T \
+            -c /etc/suricata/suricata.yaml \
+            -S "$GITHUB_WORKSPACE/config/local.rules"
