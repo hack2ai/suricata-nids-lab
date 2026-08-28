@@ -1,6 +1,6 @@
 # Installation and Setup
 
-This guide turns the repository into an isolated Suricata training lab.
+This guide describes how to reproduce the isolated Suricata training lab. Values marked as examples must be adapted to the actual VM network and interface.
 
 ## 1. Host requirements
 
@@ -16,18 +16,14 @@ You do not need every VM running simultaneously.
 
 ## 2. Create the isolated VirtualBox network
 
-Create a Host-Only network in VirtualBox Network Manager.
-
-Example:
+Create a Host-Only network in VirtualBox Network Manager. The verified lab used the `192.168.100.0/24` range.
 
 ```text
-Network:       192.168.56.0/24
-Host address:  192.168.56.1
-Mask:          255.255.255.0
-DHCP:          Enabled
+Network: 192.168.100.0/24
+Mask:    255.255.255.0
 ```
 
-Attach lab VMs to the same Host-Only network. Do not use Bridged Adapter for intentionally vulnerable machines.
+Attach the lab VMs to the same isolated Host-Only network. Do not use Bridged Adapter for intentionally vulnerable machines.
 
 ## 3. Install Suricata on Ubuntu
 
@@ -47,88 +43,89 @@ suricata --build-info
 sudo systemctl status suricata
 ```
 
+The verified lab used Suricata `8.0.3`.
+
 ## 4. Configure Suricata
 
-The example settings are in `config/suricata-lab.yaml.example`.
+The repository provides `config/suricata-lab.yaml.example` as a reference. Adapt it rather than replacing a distribution configuration blindly.
 
-Set `HOME_NET` to the actual lab subnet and configure the real capture interface. The example assumes:
+In the verified lab:
 
 ```text
-HOME_NET = 192.168.56.0/24
+HOME_NET  = 192.168.100.0/24
 interface = enp0s3
 ```
 
-Do not assume these values match every VM.
+Do not assume these values match another VM installation. Confirm the interface with `ip addr`.
 
 ## 5. Enable EVE JSON
 
-Ensure EVE logging includes at least:
+Ensure the full Suricata configuration has EVE JSON enabled and includes the required event types. The verified alert log was:
 
-```yaml
-outputs:
-  - eve-log:
-      enabled: yes
-      filetype: regular
-      filename: eve.json
-      types:
-        - alert
-        - http
-        - dns
-        - tls
-        - flow
+```text
+/var/log/suricata/eve.json
 ```
 
-## 6. Add the custom rules
+## 6. Install the repository rules
 
-Copy or adapt `config/local.rules` to the Suricata rules directory, normally:
+From a clone of this repository:
 
 ```bash
-sudo cp config/local.rules /etc/suricata/rules/local.rules
+chmod +x scripts/setup-rules.sh
+sudo ./scripts/setup-rules.sh
 ```
 
-Ensure the full Suricata configuration loads `local.rules` in its `rule-files` section.
+The script installs `config/local.rules` to:
+
+```text
+/etc/suricata/rules/local.rules
+```
+
+Ensure `local.rules` is listed in the full configuration's `rule-files` section.
 
 ## 7. Validate before restart
 
 ```bash
+sudo ./scripts/validate.sh
+```
+
+Equivalent direct command:
+
+```bash
 sudo suricata -T -c /etc/suricata/suricata.yaml
-sudo systemctl restart suricata
-sudo systemctl status suricata
 ```
 
-If the service fails:
+A successful validation must report that the configuration was successfully loaded.
+
+## 8. Start Suricata
 
 ```bash
-sudo journalctl -u suricata --no-pager -n 100
-```
-
-## 8. Update standard rules
-
-```bash
-sudo suricata-update
-sudo ls -lh /var/lib/suricata/rules/
 sudo systemctl restart suricata
+sudo systemctl status suricata --no-pager
 ```
+
+The service should show `active (running)`.
 
 ## 9. Verify packet visibility
 
-Before testing signatures:
+On the Ubuntu sensor:
 
 ```bash
 sudo tcpdump -ni enp0s3
 ```
 
-Generate harmless traffic from the authorized lab machine. If no packets appear, fix the VirtualBox network topology first.
+Generate benign authorized lab traffic from Kali. If the sensor sees no relevant traffic, fix the VirtualBox topology before troubleshooting signatures.
 
 ## 10. Monitor EVE JSON
+
+```bash
+sudo ./scripts/monitor-alerts.sh
+```
+
+Or:
 
 ```bash
 sudo tail -f /var/log/suricata/eve.json
 ```
 
-Alerts only:
-
-```bash
-sudo tail -f /var/log/suricata/eve.json | \
-  jq 'select(.event_type=="alert")'
-```
+Only test against intentionally vulnerable systems inside the isolated lab.
