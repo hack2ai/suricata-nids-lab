@@ -1,13 +1,14 @@
-# Example values for the isolated NIDS lab.
+# Example values for the verified isolated NIDS lab.
 # Merge/adapt these settings into /etc/suricata/suricata.yaml.
 # Do not copy this file over a distribution's full configuration blindly.
 
 vars:
   address-groups:
-    HOME_NET: "[192.168.56.0/24]"
+    HOME_NET: "[192.168.100.0/24]"
     EXTERNAL_NET: "!$HOME_NET"
 
-# Capture interface used by the lab sensor.
+# Capture interface used by the verified lab sensor.
+# Change this when the VM uses a different interface name.
 af-packet:
   - interface: enp0s3
     cluster-id: 99
