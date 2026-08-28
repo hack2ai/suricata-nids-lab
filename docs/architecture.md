@@ -1,52 +1,77 @@
 # Lab Architecture
 
-## Logical flow
+## Verified lab environment
+
+The lab session used an isolated VirtualBox network in the `192.168.100.0/24` range. The exact VM addresses can vary by configuration, so the examples below are descriptive rather than hard-coded requirements.
 
 ```text
-Host Computer
-     |
-     v
-Oracle VirtualBox
-     |
-     v
-Isolated Host-Only NIDS LAB (example: 192.168.56.0/24)
-     |
-     +--> Kali Linux (.10) -------- authorized test traffic
-     |
-     +--> Windows (.20) ----------- victim endpoint
-     |
-     +--> Ubuntu + Suricata (.30) - IDS sensor
-     |
-     +--> Metasploitable 2 (.40) --- intentionally vulnerable target
-     |
-     +--> DVWA (.50) -------------- vulnerable web application
-     |
-     +--> Typhoon 1.02 (.60) ------ intentionally vulnerable target
-                                      |
-                                      v
-                                  eve.json
-                                      |
-                                      v
-                                  jq / SIEM
+                         HOST COMPUTER
+                              |
+                         Oracle VirtualBox
+                              |
+                  ISOLATED HOST-ONLY NIDS LAB
+                       192.168.100.0/24
+                              |
+        +---------------------+---------------------+
+        |                     |                     |
+        v                     v                     v
+      KALI                WINDOWS             UBUNTU + SURICATA
+   authorized tests       victim VM              IDS sensor
+        |                     |                     |
+        +---------------------+---------------------+
+                              |
+                 +------------+------------+
+                 |            |            |
+                 v            v            v
+           METASPLOITABLE    DVWA       TYPHOON
+          vulnerable target  web target  vulnerable target
+                              |
+                              v
+                           eve.json
+                              |
+                              v
+                           jq / SIEM
 ```
 
 ## Critical IDS concept
 
 A passive NIDS does not automatically receive every packet exchanged by other VMs. Suricata must have packet visibility on the traffic path it is intended to inspect. Verify this with `tcpdump` before debugging rules.
 
-## Example addressing
+## Sensor configuration used in the verified lab
 
-| System | Role | Example IP |
-|---|---|---|
-| Kali Linux | Authorized attacker/test system | `192.168.56.10` |
-| Windows | Victim endpoint | `192.168.56.20` |
-| Ubuntu + Suricata | NIDS sensor | `192.168.56.30` |
-| Metasploitable 2 | Vulnerable target | `192.168.56.40` |
-| DVWA | Web training target | `192.168.56.50` |
-| Typhoon 1.02 | Vulnerable target | `192.168.56.60` |
+- Suricata version: `8.0.3`
+- Capture interface: `enp0s3`
+- Lab subnet: `192.168.100.0/24`
+- EVE JSON: `/var/log/suricata/eve.json`
+- Custom rules: `/var/lib/suricata/rules/local.rules`
 
-IPs are examples; DHCP may assign different addresses.
+## Detection pipeline
+
+```text
+Authorized lab traffic
+        |
+        v
+VirtualBox isolated network
+        |
+        v
+Suricata packet capture
+        |
+        v
+Protocol decoding
+        |
+        v
+Custom rule engine
+        |
+        v
+Alert
+        |
+        v
+eve.json
+        |
+        v
+jq / SIEM / dashboard
+```
 
 ## Safety boundary
 
-Keep intentionally vulnerable VMs on an isolated lab network. Do not bridge them to a home, college, office, or public network.
+Keep intentionally vulnerable VMs on an isolated lab network. Do not bridge Metasploitable, DVWA hosts, Typhoon, or other vulnerable systems to a home, college, office, or public network.
