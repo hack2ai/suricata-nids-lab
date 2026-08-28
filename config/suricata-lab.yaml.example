@@ -1,0 +1,35 @@
+# Example values for the isolated NIDS lab.
+# Merge/adapt these settings into /etc/suricata/suricata.yaml.
+# Do not copy this file over a distribution's full configuration blindly.
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.56.0/24]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+# Capture interface used by the lab sensor.
+af-packet:
+  - interface: enp0s3
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    tpacket-v3: yes
+
+# EVE JSON output example.
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - flow
+
+# Enable the custom rule file from this repository in the full
+# Suricata configuration's rule-files section:
+# rule-files:
+#   - suricata.rules
+#   - local.rules
